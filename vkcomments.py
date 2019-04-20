@@ -100,6 +100,8 @@ class VKComments:
 
                 data.append(line)
 
+        print("Comments received:", comments_number["count"], sep=" ")
+
         return data
 
     def print_csv(self, data):
@@ -113,3 +115,5 @@ class VKComments:
                         print(",", end="", file=f)
                     print("\"", data[i][j], end="\"", file=f)
                 print(";", file=f)
+
+        print("Output written to file:", self.options.file_name, sep=" ")
