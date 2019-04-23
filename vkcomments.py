@@ -38,23 +38,31 @@ class VKComments:
         """
         :return: parsed owner_id and post_id from a post url
         """
-        t = list(
-            filter(
-                None,
-                re.split(
-                    "https://vk\.com/.*\?[a-zA-Z]*=[a-zA-Z]*",
-                    self.url
-                )
-            )
-        )[0]
+        # t = list(
+        #     filter(
+        #         None,
+        #         re.split(
+        #             # "https://vk\.com/.*\?[a-zA-Z]*=[a-zA-Z]*",
+        #             "[a-zA-Zа-яА-ЯёЁ:/.?%=&_]*",
+        #             self.url
+        #         )
+        #     )
+        # )
+        #
+        # t = re.split(
+        #     "[^-0-9]",
+        #     t
+        # )
 
+        # TODO
         t = re.split(
-            "[^-0-9]",
-            t
+            # "https://vk\.com/.*\?[a-zA-Z]*=[a-zA-Z]*",
+            "[a-zA-Zа-яА-ЯёЁ:/.?%=&_]*",
+            self.url
         )
 
-        owner_id = t[0]
-        post_id = t[1]
+        owner_id = t[-2]
+        post_id = t[-1]
 
         return owner_id, post_id
 
