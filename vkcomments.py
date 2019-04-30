@@ -1,6 +1,7 @@
 import vk
 import re
 import options
+import getpass
 
 
 class VKComments:
@@ -30,8 +31,12 @@ class VKComments:
         if "file_name" in opt:
             self.options.file_name = opt["file_name"]
 
+        # self.api = vk.API(
+        #     vk.Session(access_token=self.options.access_token)
+        # )
+
         self.api = vk.API(
-            vk.Session(access_token=self.options.access_token)
+            vk.AuthSession(options.app_id, input("Username: "), getpass.getpass(), scope='wall, video')
         )
 
     def parse_url(self):
@@ -57,12 +62,14 @@ class VKComments:
         # TODO
         t = re.split(
             # "https://vk\.com/.*\?[a-zA-Z]*=[a-zA-Z]*",
-            "[a-zA-Zа-яА-ЯёЁ:/.?%=&_]*",
+            "[a-zA-Zа-яА-ЯёЁ:/.?%=&_]+",
             self.url
         )
 
         owner_id = t[-2]
         post_id = t[-1]
+
+        print("DEBUG: ", "owner_id: ", owner_id, "; post_id: ", post_id, sep="")
 
         return owner_id, post_id
 
@@ -75,26 +82,30 @@ class VKComments:
         owner_id, post_id = self.parse_url()
 
         # Getting number of comments of a post
-        comments_number = self.api.wall.getComments(
+        # comments = self.api.wall.getComments(
+        comments_number = self.api.video.getComments(
             v=self.options.api_version,
 
             owner_id=owner_id,
-            post_id=post_id,
+            # post_id=post_id,
+            video_id=post_id,
 
             count=1
         )
 
         # Getting all comments of a post
         for i in range(0, comments_number["count"], 100):
-            comments = self.api.wall.getComments(
+            # comments = self.api.wall.getComments(
+            comments = self.api.video.getComments(
                 v=self.options.api_version,
                 need_likes=self.options.need_likes,
                 count=self.options.count,
                 sort=self.options.sort,
-                thread_items_count=self.options.thread_items_count,
+                # thread_items_count=self.options.thread_items_count,
 
                 owner_id=owner_id,
-                post_id=post_id,
+                # post_id=post_id,
+                video_id=post_id,
 
                 offset=i
             )
@@ -108,7 +119,7 @@ class VKComments:
 
                 data.append(line)
 
-        print("Comments received:", comments_number["count"], sep=" ")
+        print("DEBUG: ", "Comments received: ", comments_number["count"], sep="")
 
         return data
 
@@ -116,12 +127,15 @@ class VKComments:
         """
         :param data: list of lists containing comments
         """
-        with open(self.options.file_name, "w") as f:
-            for i in range(0, len(data)):
-                for j in range(0, len(data[i])):
-                    if j != 0:
-                        print(",", end="", file=f)
-                    print("\"", data[i][j], end="\"", file=f)
-                print(";", file=f)
+        if len(data) > 0:
+            with open(self.options.file_name, "w") as f:
+                for i in range(0, len(data)):
+                    for j in range(0, len(data[i])):
+                        if j != 0:
+                            print(",", end="", file=f)
+                        print("\"", data[i][j], end="\"", sep="", file=f)
+                    print(";", file=f)
 
-        print("Output written to file:", self.options.file_name, sep=" ")
+            print("Output written to file: ", self.options.file_name, sep="")
+        else:
+            print("No comments received.")
