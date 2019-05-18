@@ -7,6 +7,9 @@ import options
 
 try:
     obj = VKComments()
+except KeyboardInterrupt:
+    obj = None
+    print("\nПрограмма завершена.")
 except Exception as e:
     obj = None
 
