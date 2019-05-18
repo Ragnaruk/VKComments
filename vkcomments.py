@@ -2,20 +2,18 @@ import vk
 import re
 import options
 import getpass
+import logging
 
 
 class VKComments:
-    def __init__(self, url, opt={}):
+    def __init__(self, opt={}):
         """
-        :param url: url of the post from which comments should be taken
         :param opt: options of api requests
         """
 
         self.options = options
-        self.url = url
+        self.offset = 0
 
-        if "access_token" in opt:
-            self.options.access_token = opt["access_token"]
         if "api_version" in opt:
             self.options.api_version = opt["api_version"]
         if "need_likes" in opt:
@@ -31,18 +29,24 @@ class VKComments:
         if "file_name" in opt:
             self.options.file_name = opt["file_name"]
 
+        logging.basicConfig(filename="info.log", level=logging.INFO, filemode="w")
+        open(self.options.file_name, "w")
+
         # self.api = vk.API(
         #     vk.Session(access_token=self.options.access_token)
         # )
 
         self.api = vk.API(
-            vk.AuthSession(options.app_id, input("Username: "), getpass.getpass(), scope='wall, video')
+            vk.AuthSession(options.app_id, input("Username: "), getpass.getpass(), scope="wall, video")
         )
+        print("Авторизация успешна.")
 
-    def parse_url(self):
+    def parse_url(self, url):
         """
+        :param url: url to parse
         :return: parsed owner_id and post_id from a post url
         """
+
         # t = list(
         #     filter(
         #         None,
@@ -59,52 +63,54 @@ class VKComments:
         #     t
         # )
 
-        # TODO
         t = re.split(
             # "https://vk\.com/.*\?[a-zA-Z]*=[a-zA-Z]*",
             "[a-zA-Zа-яА-ЯёЁ:/.?%=&_]+",
-            self.url
+            url
         )
 
         owner_id = t[-2]
         post_id = t[-1]
 
-        print("DEBUG: ", "owner_id: ", owner_id, "; post_id: ", post_id, sep="")
+        if len(owner_id) == 0 or len(post_id) == 0:
+            raise ValueError("Ошибка при распознавании url.")
+
+        logging.debug("owner_id / post_id: " +
+                     str(owner_id) +
+                     " / " +
+                     str(post_id) +
+                     ".")
 
         return owner_id, post_id
 
-    def get_comments(self):
+    def get_comments(self, owner_id, post_id):
         """
-        :return: list of lists containing comments
+        :param owner_id: id of the owner
+        :param post_id: id of the post
+        :return: comments from the post
         """
+
         data = []
 
-        owner_id, post_id = self.parse_url()
-
         # Getting number of comments of a post
-        # comments = self.api.wall.getComments(
         comments_number = self.api.video.getComments(
             v=self.options.api_version,
 
             owner_id=owner_id,
-            # post_id=post_id,
             video_id=post_id,
 
             count=1
         )
 
         # Getting all comments of a post
-        for i in range(0, comments_number["count"], 100):
-            # comments = self.api.wall.getComments(
+        for i in range(self.offset, comments_number["count"], 100):
             comments = self.api.video.getComments(
                 v=self.options.api_version,
                 need_likes=self.options.need_likes,
                 count=self.options.count,
                 sort=self.options.sort,
-                # thread_items_count=self.options.thread_items_count,
 
                 owner_id=owner_id,
-                # post_id=post_id,
                 video_id=post_id,
 
                 offset=i
@@ -115,11 +121,49 @@ class VKComments:
                 line = []
 
                 for k in self.options.return_fields:
-                    line.append(comments["items"][j][k])
+                    if k == "likes":
+                        line.append(comments["items"][j][k]["count"])
+                    else:
+                        line.append(comments["items"][j][k])
 
                 data.append(line)
 
-        print("DEBUG: ", "Comments received: ", comments_number["count"], sep="")
+        logging.info("Комментариев получено / Комментариев всего: " +
+                     str(comments_number["count"] - self.offset) +
+                     " / " +
+                     str(comments_number["count"]) +
+                     ".")
+
+        self.offset = comments_number["count"]
+
+        return data
+
+    def get_usernames(self, data):
+        """
+        :param data: list of lists containing comments with user_ids
+        :return: list of lists containing comments with usernames
+        """
+        
+        # Method api.users.get() accepts a maximum of a thousand user_ids in one call
+        user_ids_array = []
+        for i in range(0, len(data), 1000):
+            user_ids_array.append(",".join(str(x[0]) for x in data[i:i + 1000:1]))
+
+        # Method api.users.get() doesn't return repetitions
+        user_dictionary = {}
+        for user_ids in user_ids_array:
+            users = self.api.users.get(
+                v=self.options.api_version,
+                user_ids=user_ids,
+                fields="photo_50"
+            )
+
+            for user in users:
+                user_dictionary[user["id"]] = [user["first_name"] + " " + user["last_name"], user["photo_50"]]
+
+        for d in data:
+            d.append(user_dictionary[d[0]][1])
+            d[0] = user_dictionary[d[0]][0]
 
         return data
 
@@ -128,14 +172,10 @@ class VKComments:
         :param data: list of lists containing comments
         """
         if len(data) > 0:
-            with open(self.options.file_name, "w") as f:
+            with open(self.options.file_name, "a") as f:
                 for i in range(0, len(data)):
-                    for j in range(0, len(data[i])):
-                        if j != 0:
-                            print(",", end="", file=f)
-                        print("\"", data[i][j], end="\"", sep="", file=f)
-                    print(";", file=f)
+                    print("\"" + "\",\"".join(str(x) for x in data[i]) + "\"", end=";\n", file=f)
 
-            print("Output written to file: ", self.options.file_name, sep="")
+            logging.info("Комментарии записаны в файл: " + str(self.options.file_name) + ".")
         else:
-            print("No comments received.")
+            logging.info("Новых комментариев нет.")
