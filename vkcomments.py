@@ -22,12 +22,14 @@ class VKComments:
             self.options.count = opt["count"]
         if "sort" in opt:
             self.options.sort = opt["sort"]
-        if "thread_items_count" in opt:
-            self.options.thread_items_count = opt["thread_items_count"]
         if "return_fields" in opt:
             self.options.return_fields = opt["return_fields"]
         if "file_name" in opt:
             self.options.file_name = opt["file_name"]
+        if "username" in opt:
+            self.options.username = opt["username"]
+        if "password" in opt:
+            self.options.password = opt["password"]
 
         logging.basicConfig(filename="info.log", level=logging.INFO, filemode="w")
         open(self.options.file_name, "w")
@@ -36,10 +38,23 @@ class VKComments:
         #     vk.Session(access_token=self.options.access_token)
         # )
 
+        inp = ""
+        if self.options.username and self.options.password:
+            while inp not in ["y", "n", "Y", "N", "yes", "no", "Yes", "No"]:
+                inp = input("Войти как %s? [y/n]: " % self.options.username)
+
+        if inp in ["y", "Y", "yes", "Yes"]:
+            username = self.options.username
+            password = self.options.password
+        else:
+            username = input("Логин: ")
+            password = getpass.getpass("Пароль: ")
+
         self.api = vk.API(
-            vk.AuthSession(options.app_id, input("Username: "), getpass.getpass(), scope="wall, video")
+            vk.AuthSession(options.app_id, username, password, scope="wall, video")
         )
-        print("Авторизация успешна.")
+
+        print("Авторизация прошла успешно.")
 
     def parse_url(self, url):
         """
