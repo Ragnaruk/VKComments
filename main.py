@@ -1,14 +1,46 @@
 from vkcomments import VKComments
+from time import sleep
+from yaspin import yaspin
+import options
 
-# url = 'https://vk.com/vklive_app?w=wall-135678176_11436'
-# url = 'https://vk.com/feed?w=wall-28122932_229001'
-# url = 'https://vk.com/search?c%5Bper_page%5D=80&c%5Bq%5D=прямая&c%5Bsection%5D=video&c%5Bsort%5D=2&z=video-2784806_456239168'
-# url = 'https://vk.com/feed?w=wall-28122932_228936'
+# https://vk.com/video1009205_456239050
 
-url = 'https://vk.com/video1009205_456239050'
+obj = VKComments()
 
-comments = VKComments(url)
+ready = False
+owner_id, post_id = 0, 0
 
-data = comments.get_comments()
+while not ready:
+    try:
+        url = input("Введите url трансляции: ")
 
-comments.print_csv(data)
+        if url == "0":
+            owner_id = input("id пользователя: ")
+            post_id = input("id видео: ")
+            ready = True
+        else:
+            owner_id, post_id = obj.parse_url(url)
+            ready = True
+    except Exception as e:
+        print("Ошибка при распознавании url. Повторите попытку ввода, "
+              "либо введите 0 для того, чтобы задать id пользователя и видео вручную.")
+
+
+try:
+    with yaspin(color="magenta") as sp:
+        counter = 1
+
+        while True:
+            sp.text = "Получение комментариев... (" + str(counter) + ")"
+
+            data = obj.get_comments(owner_id, post_id)
+            data = obj.get_usernames(data)
+            obj.print_csv(data)
+
+            counter += 1
+            sleep(options.sleep_time)
+except Exception as e:
+    if hasattr(e, 'message'):
+        print(e.message)
+    else:
+        print(e)
