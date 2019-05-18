@@ -31,9 +31,6 @@ class VKComments:
         if "password" in opt:
             self.options.password = opt["password"]
 
-        logging.basicConfig(filename="info.log", level=logging.INFO, filemode="w")
-        open(self.options.file_name, "w")
-
         # self.api = vk.API(
         #     vk.Session(access_token=self.options.access_token)
         # )
@@ -55,6 +52,9 @@ class VKComments:
         )
 
         print("Авторизация прошла успешно.")
+
+        logging.basicConfig(filename="info.log", level=logging.INFO, filemode="w")
+        open(self.options.file_name, "w")
 
     def parse_url(self, url):
         """
@@ -143,9 +143,9 @@ class VKComments:
 
                 data.append(line)
 
-        logging.info("Комментариев получено / Комментариев всего: " +
+        logging.info("Комментариев получено/всего: " +
                      str(comments_number["count"] - self.offset) +
-                     " / " +
+                     "/" +
                      str(comments_number["count"]) +
                      ".")
 
