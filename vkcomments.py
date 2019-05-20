@@ -4,11 +4,18 @@ import getpass
 import logging
 import configparser
 import os
+import sys
 
 
-CONFIG_FILE_NAME = "config.ini"
+# determine if application is a script file or frozen exe
+if getattr(sys, 'frozen', False):
+    LOCATION = os.path.dirname(os.path.abspath(sys.executable))
+elif __file__:
+    LOCATION = os.path.dirname(os.path.abspath(__file__))
+
 POSSIBLE_INPUT_VALUES = ["y", "n", "Y", "N", "yes", "no", "Yes", "No"]
 YES_INPUT_VALUES = ["y", "Y", "yes", "Yes"]
+CONFIG_FILE_NAME = "config.ini"
 DEFAULT_CONFIG = """## Файл с настройками приложения
 # Удалите этот файл для получения настроек по умолчанию
 
@@ -90,21 +97,21 @@ class VKComments:
         :return: config read from a file
         """
 
-        if not os.path.isfile(CONFIG_FILE_NAME):
+        if not os.path.isfile(os.path.join(LOCATION, CONFIG_FILE_NAME)):
             self.print_default_config()
 
         config = configparser.ConfigParser()
-        config.read(CONFIG_FILE_NAME)
+        config.read(os.path.join(LOCATION, CONFIG_FILE_NAME))
 
         return config
 
     def print_default_config(self):
-        with open(CONFIG_FILE_NAME, "w") as configfile:
+        with open(os.path.join(LOCATION, CONFIG_FILE_NAME), "w") as configfile:
             print(DEFAULT_CONFIG, file=configfile)
 
             print("Файл конфигураций создан.")
             logging.info("Файл конфигураций c именем: " +
-                          DEFAULT_CONFIG +
+                          CONFIG_FILE_NAME +
                           " создан.")
 
     def parse_url(self, url):
@@ -229,10 +236,10 @@ class VKComments:
         """
 
         if len(data) > 0:
-            with open(self.config["OUTPUT"]["file_name"], "a") as f:
+            with open(os.path.join(LOCATION, self.config["OUTPUT"]["file_name"]), "a") as f:
                 for i in range(0, len(data)):
                     print("\"" + "\",\"".join(str(x) for x in data[i]) + "\"", end=";\n", file=f)
 
-            logging.info("Комментарии записаны в файл: " + str(self.config["OUTPUT"]["file_name"]) + ".")
+            logging.info("Комментарии записаны в файл: " + self.config["OUTPUT"]["file_name"] + ".")
         else:
             logging.info("Новых комментариев нет.")
