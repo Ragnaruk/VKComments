@@ -1,61 +1,111 @@
 import vk
 import re
-import options
 import getpass
 import logging
+import configparser
+import os
+
+
+CONFIG_FILE_NAME = "config.ini"
+POSSIBLE_INPUT_VALUES = ["y", "n", "Y", "N", "yes", "no", "Yes", "No"]
+YES_INPUT_VALUES = ["y", "Y", "yes", "Yes"]
+DEFAULT_CONFIG = """## Файл с настройками приложения
+# Удалите этот файл для получения настроек по умолчанию
+
+[APPLICATION]
+# Id приложения, от которого идут запросы к api
+app_id = 6947304
+
+[OPTIONS]
+# Версия используемого api
+api_version = 5.95
+# Требуется ли возвращать кол-во лайков к комментариям (0 — нет, 1 — да)
+need_likes = 1
+# Кол-во комментариев, возвращаемых в одном запросе (Натуральное число от 1 до 100)
+count = 100
+# В каком порядке сортировать комментарии (asc — от старых к новым, desc — от новых к старым)
+sort = asc
+# Возвращаемые поля комментариев
+return_fields = 
+    from_id
+    date
+    text
+    likes
+
+[OUTPUT]
+# Название выходного файла
+file_name = comments.csv
+
+[USER]
+# Логин и пароль, по которым происходит вход
+username = 
+password = 
+
+[SLEEP]
+# Время ожидания между запросами к api в секундах
+sleep_time = 2
+"""
 
 
 class VKComments:
-    def __init__(self, opt={}):
+    def __init__(self):
         """
         :param opt: options of api requests
         """
 
-        self.options = options
+        logging.basicConfig(filename="info.log", level=logging.INFO, filemode="w")
+
         self.offset = 0
+        self.config = self.get_config()
 
-        # # Might be needed for UI
-        # if "api_version" in opt:
-        #     self.options.api_version = opt["api_version"]
-        # if "need_likes" in opt:
-        #     self.options.need_likes = opt["need_likes"]
-        # if "count" in opt:
-        #     self.options.count = opt["count"]
-        # if "sort" in opt:
-        #     self.options.sort = opt["sort"]
-        # if "return_fields" in opt:
-        #     self.options.return_fields = opt["return_fields"]
-        # if "file_name" in opt:
-        #     self.options.file_name = opt["file_name"]
-        # if "username" in opt:
-        #     self.options.username = opt["username"]
-        # if "password" in opt:
-        #     self.options.password = opt["password"]
-
-        # self.api = vk.API(
-        #     vk.Session(access_token=self.options.access_token)
-        # )
+        # Configparser doesn't support lists, so value needs to be split
+        self.return_fields = list(filter(None, (
+            x.strip() for x in (self.config["OPTIONS"]["return_fields"]).splitlines())))
 
         inp = ""
-        if self.options.username and self.options.password:
-            while inp not in ["y", "n", "Y", "N", "yes", "no", "Yes", "No"]:
-                inp = input("Войти как %s? [y/n]: " % self.options.username)
+        if self.config["USER"]["username"] and self.config["USER"]["password"]:
+            while inp not in POSSIBLE_INPUT_VALUES:
+                inp = input("Войти как %s? [y/n]: " % self.config["USER"]["username"])
 
-        if inp in ["y", "Y", "yes", "Yes"]:
-            username = self.options.username
-            password = self.options.password
+        if inp in YES_INPUT_VALUES:
+            username = self.config["USER"]["username"]
+            password = self.config["USER"]["password"]
         else:
             username = input("Логин: ")
             password = getpass.getpass("Пароль: ")
 
         self.api = vk.API(
-            vk.AuthSession(options.app_id, username, password, scope="video")
+            vk.AuthSession(int(self.config["APPLICATION"]["app_id"]), username, password, scope="video")
         )
 
         print("Авторизация прошла успешно.")
+        logging.debug("Успешная авторизация как: " +
+                      str(username) +
+                      ".")
 
-        logging.basicConfig(filename="info.log", level=logging.INFO, filemode="w")
-        open(self.options.file_name, "w")
+        open(self.config["OUTPUT"]["file_name"], "w")
+
+    def get_config(self):
+        """
+        :return: config read from a file
+        """
+
+        if not os.path.isfile(CONFIG_FILE_NAME):
+            self.print_default_config()
+
+        config = configparser.ConfigParser()
+        config.read(CONFIG_FILE_NAME)
+
+        return config
+
+    def print_default_config(self):
+        with open(CONFIG_FILE_NAME, "w") as configfile:
+            print(DEFAULT_CONFIG, file=configfile)
+
+            print("Файл конфигураций создан.")
+            logging.info("Файл конфигураций c именем: " +
+                          DEFAULT_CONFIG +
+                          " создан.")
 
     def parse_url(self, url):
         """
@@ -75,6 +125,9 @@ class VKComments:
         if len(owner_id) == 0 or len(post_id) == 0:
             raise ValueError("Ошибка при распознавании url.")
 
+        logging.debug("url: " +
+                      url +
+                      ".")
         logging.debug("owner_id / post_id: " +
                      str(owner_id) +
                      " / " +
@@ -94,7 +147,7 @@ class VKComments:
 
         # Getting number of comments of a post
         comments_number = self.api.video.getComments(
-            v=self.options.api_version,
+            v=self.config["OPTIONS"]["api_version"],
 
             owner_id=owner_id,
             video_id=post_id,
@@ -105,10 +158,10 @@ class VKComments:
         # Getting all comments of a post
         for i in range(self.offset, comments_number["count"], 100):
             comments = self.api.video.getComments(
-                v=self.options.api_version,
-                need_likes=self.options.need_likes,
-                count=self.options.count,
-                sort=self.options.sort,
+                v=self.config["OPTIONS"]["api_version"],
+                need_likes=self.config["OPTIONS"]["need_likes"],
+                count=self.config["OPTIONS"]["count"],
+                sort=self.config["OPTIONS"]["sort"],
 
                 owner_id=owner_id,
                 video_id=post_id,
@@ -121,7 +174,7 @@ class VKComments:
 
                 line = []
 
-                for k in self.options.return_fields:
+                for k in self.return_fields:
                     if k == "likes":
                         line.append(comments["items"][j][k]["count"])
                     else:
@@ -154,7 +207,7 @@ class VKComments:
         user_dictionary = {}
         for user_ids in user_ids_array:
             users = self.api.users.get(
-                v=self.options.api_version,
+                v=self.config["OPTIONS"]["api_version"],
                 user_ids=user_ids,
                 fields="photo_50"
             )
@@ -176,10 +229,10 @@ class VKComments:
         """
 
         if len(data) > 0:
-            with open(self.options.file_name, "a") as f:
+            with open(self.config["OUTPUT"]["file_name"], "a") as f:
                 for i in range(0, len(data)):
                     print("\"" + "\",\"".join(str(x) for x in data[i]) + "\"", end=";\n", file=f)
 
-            logging.info("Комментарии записаны в файл: " + str(self.options.file_name) + ".")
+            logging.info("Комментарии записаны в файл: " + str(self.config["OUTPUT"]["file_name"]) + ".")
         else:
             logging.info("Новых комментариев нет.")

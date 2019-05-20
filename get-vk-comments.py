@@ -1,7 +1,6 @@
 from vkcomments import VKComments
 from time import sleep
 from yaspin import yaspin
-import options
 
 # https://vk.com/video1009205_456239050
 
@@ -13,6 +12,10 @@ except KeyboardInterrupt:
     print("\nПрограмма завершена.")
 except Exception as e:
     obj = None
+    if hasattr(e, 'message'):
+        print(e.message)
+    else:
+        print(e)
 
 if obj:
     ready = False
@@ -47,9 +50,9 @@ if obj:
                 obj.print_csv(data)
 
                 counter += 1
-                sleep(options.sleep_time)
+                sleep(int(obj.config["SLEEP"]["sleep_time"]))
     except KeyboardInterrupt:
-        print("Программа завершена.")
+        print("\nПрограмма завершена.")
     except Exception as e:
         if hasattr(e, 'message'):
             print(e.message)
