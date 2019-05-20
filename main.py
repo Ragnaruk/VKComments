@@ -5,6 +5,7 @@ import options
 
 # https://vk.com/video1009205_456239050
 
+# Initializing class and logging in
 try:
     obj = VKComments()
 except KeyboardInterrupt:
@@ -17,6 +18,7 @@ if obj:
     ready = False
     owner_id, post_id = 0, 0
 
+    # Ask for url until it's successfully parsed or owner_id and post_id are entered manually
     while not ready:
         try:
             url = input("Введите url трансляции: ")
@@ -32,6 +34,7 @@ if obj:
             print("Ошибка при распознавании url. Повторите попытку ввода, "
                   "либо введите 0 для того, чтобы задать id пользователя и видео вручную.")
 
+    # Getting comments and printing a spinner until escaped
     try:
         with yaspin(color="magenta") as sp:
             counter = 1
