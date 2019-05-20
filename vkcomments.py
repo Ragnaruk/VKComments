@@ -14,22 +14,23 @@ class VKComments:
         self.options = options
         self.offset = 0
 
-        if "api_version" in opt:
-            self.options.api_version = opt["api_version"]
-        if "need_likes" in opt:
-            self.options.need_likes = opt["need_likes"]
-        if "count" in opt:
-            self.options.count = opt["count"]
-        if "sort" in opt:
-            self.options.sort = opt["sort"]
-        if "return_fields" in opt:
-            self.options.return_fields = opt["return_fields"]
-        if "file_name" in opt:
-            self.options.file_name = opt["file_name"]
-        if "username" in opt:
-            self.options.username = opt["username"]
-        if "password" in opt:
-            self.options.password = opt["password"]
+        # # Might be needed for UI
+        # if "api_version" in opt:
+        #     self.options.api_version = opt["api_version"]
+        # if "need_likes" in opt:
+        #     self.options.need_likes = opt["need_likes"]
+        # if "count" in opt:
+        #     self.options.count = opt["count"]
+        # if "sort" in opt:
+        #     self.options.sort = opt["sort"]
+        # if "return_fields" in opt:
+        #     self.options.return_fields = opt["return_fields"]
+        # if "file_name" in opt:
+        #     self.options.file_name = opt["file_name"]
+        # if "username" in opt:
+        #     self.options.username = opt["username"]
+        # if "password" in opt:
+        #     self.options.password = opt["password"]
 
         # self.api = vk.API(
         #     vk.Session(access_token=self.options.access_token)
@@ -48,7 +49,7 @@ class VKComments:
             password = getpass.getpass("Пароль: ")
 
         self.api = vk.API(
-            vk.AuthSession(options.app_id, username, password, scope="wall, video")
+            vk.AuthSession(options.app_id, username, password, scope="video")
         )
 
         print("Авторизация прошла успешно.")
@@ -62,24 +63,8 @@ class VKComments:
         :return: parsed owner_id and post_id from a post url
         """
 
-        # t = list(
-        #     filter(
-        #         None,
-        #         re.split(
-        #             # "https://vk\.com/.*\?[a-zA-Z]*=[a-zA-Z]*",
-        #             "[a-zA-Zа-яА-ЯёЁ:/.?%=&_]*",
-        #             self.url
-        #         )
-        #     )
-        # )
-        #
-        # t = re.split(
-        #     "[^-0-9]",
-        #     t
-        # )
-
+        # Parsing url with regex
         t = re.split(
-            # "https://vk\.com/.*\?[a-zA-Z]*=[a-zA-Z]*",
             "[a-zA-Zа-яА-ЯёЁ:/.?%=&_]+",
             url
         )
@@ -131,6 +116,7 @@ class VKComments:
                 offset=i
             )
 
+            # Getting all needed fields from comments
             for j in range(0, len(comments["items"])):
 
                 line = []
@@ -164,7 +150,7 @@ class VKComments:
         for i in range(0, len(data), 1000):
             user_ids_array.append(",".join(str(x[0]) for x in data[i:i + 1000:1]))
 
-        # Method api.users.get() doesn't return repetitions
+        # Method api.users.get() doesn't return repeating users
         user_dictionary = {}
         for user_ids in user_ids_array:
             users = self.api.users.get(
@@ -173,9 +159,11 @@ class VKComments:
                 fields="photo_50"
             )
 
+            # Get first and last name, plus a link to a downscaled avatar
             for user in users:
                 user_dictionary[user["id"]] = [user["first_name"] + " " + user["last_name"], user["photo_50"]]
 
+        # Replacing user_ids with usernames and appending avatar links
         for d in data:
             d.append(user_dictionary[d[0]][1])
             d[0] = user_dictionary[d[0]][0]
@@ -186,6 +174,7 @@ class VKComments:
         """
         :param data: list of lists containing comments
         """
+
         if len(data) > 0:
             with open(self.options.file_name, "a") as f:
                 for i in range(0, len(data)):
