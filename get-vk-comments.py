@@ -1,21 +1,28 @@
 from vkcomments import VKComments
 from time import sleep
 from yaspin import yaspin
+import sys
 
 # https://vk.com/video1009205_456239050
+
+sys.tracebacklimit = 0
 
 # Initializing class and logging in
 try:
     obj = VKComments()
 except KeyboardInterrupt:
     obj = None
-    print("\nПрограмма завершена.")
+    print("\nПрограмма завершена.\n")
+
+    sys.exit()
 except Exception as e:
     obj = None
     if hasattr(e, 'message'):
         print(e.message)
     else:
         print(e)
+
+    sys.exit()
 
 if obj:
     ready = False
@@ -52,9 +59,13 @@ if obj:
                 counter += 1
                 sleep(int(obj.config["SLEEP"]["sleep_time"]))
     except KeyboardInterrupt:
-        print("\nПрограмма завершена.")
+        print("\nПрограмма завершена.\n")
+
+        sys.exit()
     except Exception as e:
         if hasattr(e, 'message'):
             print(e.message)
         else:
             print(e)
+
+        sys.exit()
