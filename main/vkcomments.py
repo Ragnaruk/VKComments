@@ -1,11 +1,11 @@
-import vk
-import re
+import configparser
 import getpass
 import logging
-import configparser
 import os
+import re
 import sys
 
+import vk
 
 # determine if application is a script file or frozen exe
 if getattr(sys, 'frozen', False):
