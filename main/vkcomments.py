@@ -7,10 +7,10 @@ import sys
 
 import vk
 
-# determine if application is a script file or frozen exe
+# Detecting whether application is a script file or frozen exe
 if getattr(sys, 'frozen', False):
     LOCATION = os.path.dirname(os.path.abspath(sys.executable))
-elif __file__:
+else:
     LOCATION = os.path.dirname(os.path.abspath(__file__))
 
 POSSIBLE_INPUT_VALUES = ["y", "n", "Y", "N", "yes", "no", "Yes", "No"]
@@ -57,7 +57,7 @@ sleep_time = 2
 
 class VKComments:
     def __init__(self):
-        # Enable logging on the level INFO
+        # Enabling logging on the level INFO
         logging.basicConfig(filename=os.path.join(LOCATION, LOG_FILE_NAME), level=logging.INFO, filemode="w")
 
         self.offset = 0
