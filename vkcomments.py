@@ -16,6 +16,7 @@ elif __file__:
 POSSIBLE_INPUT_VALUES = ["y", "n", "Y", "N", "yes", "no", "Yes", "No"]
 YES_INPUT_VALUES = ["y", "Y", "yes", "Yes"]
 CONFIG_FILE_NAME = "config.ini"
+LOG_FILE_NAME = "log.log"
 DEFAULT_CONFIG = """## Файл с настройками приложения
 # Удалите этот файл для получения настроек по умолчанию
 
@@ -56,11 +57,8 @@ sleep_time = 2
 
 class VKComments:
     def __init__(self):
-        """
-        :param opt: options of api requests
-        """
-
-        logging.basicConfig(filename="info.log", level=logging.INFO, filemode="w")
+        # Enable logging on the level INFO
+        logging.basicConfig(filename=os.path.join(LOCATION, LOG_FILE_NAME), level=logging.INFO, filemode="w")
 
         self.offset = 0
         self.config = self.get_config()
@@ -109,10 +107,10 @@ class VKComments:
         with open(os.path.join(LOCATION, CONFIG_FILE_NAME), "w") as configfile:
             print(DEFAULT_CONFIG, file=configfile)
 
-            print("Файл конфигураций создан.")
-            logging.info("Файл конфигураций c именем: " +
-                          CONFIG_FILE_NAME +
-                          " создан.")
+        input("Файл конфигураций создан. Нажмите любую клавишу для продолжения работы.")
+        logging.info("Файл конфигураций c именем: " +
+                      CONFIG_FILE_NAME +
+                      " создан.")
 
     def parse_url(self, url):
         """
