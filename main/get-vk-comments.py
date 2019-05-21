@@ -1,9 +1,8 @@
 import sys
 from time import sleep
 
+from vkcomments import VKComments
 from yaspin import yaspin
-
-from main.vkcomments import VKComments
 
 # https://vk.com/video1009205_456239050
 
