@@ -1,23 +1,26 @@
 import sys
+import signal
 from time import sleep
+from halo import Halo
 
 from vkcomments import VKComments
-from yaspin import yaspin
 
 # https://vk.com/video1009205_456239050
 
-sys.tracebacklimit = 0
+# Checking whether this is a script file or an frozen executable
+IS_EXECUTABLE = True if getattr(sys, 'frozen', False) else False
+
+# Defining handler for SIGINT (CTRL+C)
+signal.signal(signal.SIGINT, signal.default_int_handler)
 
 # Initializing class and logging in
 try:
     obj = VKComments()
 except KeyboardInterrupt:
-    obj = None
-    print("\nПрограмма завершена.\n")
+    print("\nПрограмма завершена.")
 
     sys.exit()
 except Exception as e:
-    obj = None
     if hasattr(e, 'message'):
         print(e.message)
     else:
@@ -41,13 +44,17 @@ if obj:
             else:
                 owner_id, post_id = obj.parse_url(url)
                 ready = True
+        except KeyboardInterrupt:
+            print("\nПрограмма завершена.")
+
+            sys.exit()
         except Exception as e:
             print("Ошибка при распознавании url. Повторите попытку ввода, "
                   "либо введите 0 для того, чтобы задать id пользователя и видео вручную.")
 
     # Getting comments and printing a spinner until escaped
     try:
-        with yaspin(color="magenta") as sp:
+        with Halo(text='Loading', spinner='dots') as sp:
             counter = 1
 
             while True:
@@ -60,7 +67,10 @@ if obj:
                 counter += 1
                 sleep(int(obj.config["SLEEP"]["sleep_time"]))
     except KeyboardInterrupt:
-        print("\nПрограмма завершена.\n")
+        if IS_EXECUTABLE:
+            print()
+
+        print("Программа завершена.")
 
         sys.exit()
     except Exception as e:
@@ -68,5 +78,5 @@ if obj:
             print(e.message)
         else:
             print(e)
-
         sys.exit()
+

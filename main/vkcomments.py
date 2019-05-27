@@ -19,41 +19,40 @@ class VKComments:
     LOG_FILE_NAME = "log.log"
 
     DEFAULT_CONFIG = """## Файл с настройками приложения
-    # Удалите этот файл для получения настроек по умолчанию
+# Удалите этот файл для получения настроек по умолчанию
 
-    [APPLICATION]
-    # Id приложения, от которого идут запросы к api
-    app_id = 6947304
+[APPLICATION]
+# Id приложения, от которого идут запросы к api
+app_id = 6947304
 
-    [OPTIONS]
-    # Версия используемого api
-    api_version = 5.95
-    # Требуется ли возвращать кол-во лайков к комментариям (0 — нет, 1 — да)
-    need_likes = 1
-    # Кол-во комментариев, возвращаемых в одном запросе (Натуральное число от 1 до 100)
-    count = 100
-    # В каком порядке сортировать комментарии (asc — от старых к новым, desc — от новых к старым)
-    sort = asc
-    # Возвращаемые поля комментариев
-    return_fields = 
-        from_id
-        date
-        text
-        likes
+[OPTIONS]
+# Версия используемого api
+api_version = 5.95
+# Требуется ли возвращать кол-во лайков к комментариям (0 — нет, 1 — да)
+need_likes = 1
+# Кол-во комментариев, возвращаемых в одном запросе (Натуральное число от 1 до 100)
+count = 100
+# В каком порядке сортировать комментарии (asc — от старых к новым, desc — от новых к старым)
+sort = asc
+# Возвращаемые поля комментариев
+return_fields = 
+    from_id
+    date
+    text
+    likes
 
-    [OUTPUT]
-    # Название выходного файла
-    file_name = comments.csv
+[OUTPUT]
+# Название выходного файла
+file_name = comments.csv
 
-    [USER]
-    # Логин и пароль, по которым происходит вход
-    username = 
-    password = 
+[USER]
+# Логин и пароль, по которым происходит вход
+username = 
+password = 
 
-    [SLEEP]
-    # Время ожидания между запросами к api в секундах
-    sleep_time = 2
-    """
+[SLEEP]
+# Время ожидания между запросами к api в секундах
+sleep_time = 2"""
 
     def __init__(self):
         # Enabling logging on the level INFO
@@ -70,7 +69,7 @@ class VKComments:
         inp = ""
         if self.config["USER"]["username"] and self.config["USER"]["password"]:
             while inp not in self.POSSIBLE_INPUT_VALUES:
-                inp = input("Войти как %s? [y/n]: " % self.config["USER"]["username"])
+                inp = input("Войти как {0}? [y/n]: ".format(self.config["USER"]["username"]))
 
         if inp in self.YES_INPUT_VALUES:
             username = self.config["USER"]["username"]
@@ -84,9 +83,7 @@ class VKComments:
         )
 
         print("Авторизация прошла успешно.")
-        self.logger.debug("Успешная авторизация как: " +
-                      str(username) +
-                      ".")
+        self.logger.debug("Успешная авторизация как: {0}.".format(str(username)))
 
         open(os.path.join(self.LOCATION, self.config["OUTPUT"]["file_name"]), "w")
 
@@ -108,9 +105,7 @@ class VKComments:
             print(self.DEFAULT_CONFIG, file=configfile)
 
         input("Файл конфигураций создан. Нажмите любую клавишу для продолжения работы.")
-        self.logger.info("Файл конфигураций c именем: " +
-                      self.CONFIG_FILE_NAME +
-                      " создан.")
+        self.logger.info("Файл конфигураций c именем: {0} создан.".format(self.CONFIG_FILE_NAME))
 
     def parse_url(self, url):
         """
@@ -130,14 +125,8 @@ class VKComments:
         if len(owner_id) == 0 or len(post_id) == 0:
             raise ValueError("Ошибка при распознавании url.")
 
-        self.logger.debug("url: " +
-                      url +
-                      ".")
-        self.logger.debug("owner_id / post_id: " +
-                     str(owner_id) +
-                     " / " +
-                     str(post_id) +
-                     ".")
+        self.logger.debug("url: {0}.".format(str(url)))
+        self.logger.debug("owner_id / post_id: {0} / {1}.".format(str(owner_id), str(post_id)))
 
         return owner_id, post_id
 
@@ -187,11 +176,8 @@ class VKComments:
 
                 data.append(line)
 
-        self.logger.info("Комментариев получено/всего: " +
-                     str(comments_number["count"] - self.offset) +
-                     "/" +
-                     str(comments_number["count"]) +
-                     ".")
+        self.logger.info("Комментариев получено/всего: {0}/{1}.".format(str(comments_number["count"] - self.offset),
+                                                                        str(comments_number["count"])))
 
         self.offset = comments_number["count"]
 
@@ -202,7 +188,7 @@ class VKComments:
         :param data: list of lists containing comments with user_ids
         :return: list of lists containing comments with usernames
         """
-        
+
         # Method api.users.get() accepts a maximum of a thousand user_ids in one call
         user_ids_array = []
         for i in range(0, len(data), 1000):
@@ -238,6 +224,6 @@ class VKComments:
                 for i in range(0, len(data)):
                     print("\"" + "\",\"".join(str(x) for x in data[i]) + "\"", end=";\n", file=f)
 
-            self.logger.info("Комментарии записаны в файл: " + self.config["OUTPUT"]["file_name"] + ".")
+            self.logger.info("Комментарии записаны в файл: {0}.".format(self.config["OUTPUT"]["file_name"]))
         else:
             self.logger.info("Новых комментариев нет.")
