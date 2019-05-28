@@ -6,6 +6,7 @@ import re
 import sys
 
 import vk
+from vk.exceptions import VkAuthError
 
 
 class VKComments:
@@ -66,6 +67,24 @@ sleep_time = 2"""
         self.return_fields = list(filter(None, (
             x.strip() for x in (self.config["OPTIONS"]["return_fields"]).splitlines())))
 
+        # Authorizing
+        ready = False
+        while not ready:
+            try:
+                username, password = self.get_credentials()
+                self.api = vk.API(self.get_vk_session(username, password))
+
+                print("Авторизация прошла успешно.")
+                self.logger.info("Успешная авторизация как: {0}.".format(str(username)))
+            except VkAuthError as e:
+                input("Авторизация неуспешна. Нажмите [ENTER] для новой попытки.")
+            else:
+                ready = True
+
+        # Rewriting comments file
+        open(os.path.join(self.LOCATION, self.config["OUTPUT"]["file_name"]), "w")
+
+    def get_credentials(self):
         inp = ""
         if self.config["USER"]["username"] and self.config["USER"]["password"]:
             while inp not in self.POSSIBLE_INPUT_VALUES:
@@ -78,14 +97,10 @@ sleep_time = 2"""
             username = input("Логин: ")
             password = getpass.getpass("Пароль: ")
 
-        self.api = vk.API(
-            vk.AuthSession(int(self.config["APPLICATION"]["app_id"]), username, password, scope="video")
-        )
+        return username, password
 
-        print("Авторизация прошла успешно.")
-        self.logger.debug("Успешная авторизация как: {0}.".format(str(username)))
-
-        open(os.path.join(self.LOCATION, self.config["OUTPUT"]["file_name"]), "w")
+    def get_vk_session(self, username, password):
+        return vk.AuthSession(int(self.config["APPLICATION"]["app_id"]), username, password, scope="video")
 
     def get_config(self):
         """
@@ -104,10 +119,10 @@ sleep_time = 2"""
         with open(os.path.join(self.LOCATION, self.CONFIG_FILE_NAME), "w") as configfile:
             print(self.DEFAULT_CONFIG, file=configfile)
 
-        input("Файл конфигураций создан. Нажмите любую клавишу для продолжения работы.")
+        input("Файл конфигураций создан. Нажмите [ENTER] для продолжения работы.")
         self.logger.info("Файл конфигураций c именем: {0} создан.".format(self.CONFIG_FILE_NAME))
 
-    def parse_url(self, url):
+    def get_ids_from_url(self, url):
         """
         :param url: url to parse
         :return: parsed owner_id and post_id from a post url
@@ -119,16 +134,29 @@ sleep_time = 2"""
             url
         )
 
+        # Removing empty strings
+        t = list(filter(None, t))
+
         owner_id = t[-2]
         post_id = t[-1]
 
-        if len(owner_id) == 0 or len(post_id) == 0:
+        if len(t) != 2 or len(owner_id) == 0 or len(post_id) == 0:
             raise ValueError("Ошибка при распознавании url.")
 
         self.logger.debug("url: {0}.".format(str(url)))
         self.logger.debug("owner_id / post_id: {0} / {1}.".format(str(owner_id), str(post_id)))
 
         return owner_id, post_id
+
+    def check_url(self, owner_id, post_id):
+        comments_number = self.api.video.getComments(
+            v=self.config["OPTIONS"]["api_version"],
+
+            owner_id=owner_id,
+            video_id=post_id,
+
+            count=1
+        )
 
     def get_comments(self, owner_id, post_id):
         """
