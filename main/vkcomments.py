@@ -214,7 +214,7 @@ sleep_time = 2"""
             # Getting all needed fields from comments
             for j in range(0, len(comments["items"])):
 
-,                line = []
+                line = []
 
                 for k in self.return_fields:
                     if k == "likes":
