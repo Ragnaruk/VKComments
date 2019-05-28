@@ -4,6 +4,7 @@ import logging
 import os
 import re
 import sys
+from time import sleep
 
 import vk
 from vk.exceptions import VkAuthError
@@ -41,6 +42,8 @@ return_fields =
     date
     text
     likes
+# Максимальное кол-во возвращаемых комментариев (0 - вернуть все)
+max_count = 1000
 
 [OUTPUT]
 # Название выходного файла
@@ -125,7 +128,7 @@ sleep_time = 2"""
     def get_ids_from_url(self, url):
         """
         :param url: url to parse
-        :return: parsed owner_id and post_id from a post url
+        :return: parsed owner_id and video_id from a video url
         """
 
         # Parsing url with regex
@@ -141,44 +144,61 @@ sleep_time = 2"""
             raise ValueError("Ошибка при распознавании url.")
 
         owner_id = t[-2]
-        post_id = t[-1]
+        video_id = t[-1]
 
         self.logger.debug("url: {0}.".format(str(url)))
-        self.logger.debug("owner_id / post_id: {0} / {1}.".format(str(owner_id), str(post_id)))
+        self.logger.debug("owner_id / video_id: {0} / {1}.".format(str(owner_id), str(video_id)))
 
-        return owner_id, post_id
+        return owner_id, video_id
 
-    def check_url(self, owner_id, post_id):
-        self.api.video.getComments(
-            v=self.config["OPTIONS"]["api_version"],
-
-            owner_id=owner_id,
-            video_id=post_id,
-
-            count=1
-        )
-
-    def get_comments(self, owner_id, post_id):
-        """
-        :param owner_id: id of the owner
-        :param post_id: id of the post
-        :return: comments from the post
-        """
-
-        data = []
-
-        # Getting number of comments of a post
+    def get_comments_number(self, owner_id, video_id):
         comments_number = self.api.video.getComments(
             v=self.config["OPTIONS"]["api_version"],
 
             owner_id=owner_id,
-            video_id=post_id,
+            video_id=video_id,
 
             count=1
-        )
+        )["count"]
 
-        # Getting all comments of a post
-        for i in range(self.offset, comments_number["count"], 100):
+        return comments_number
+
+    def get_comments(self, owner_id, video_id):
+        """
+        :param owner_id: id of the owner
+        :param video_id: id of the video
+        :return: comments from the video
+        """
+
+        data = []
+
+        comments_number = self.get_comments_number(owner_id, video_id)
+
+        # Setting max number of received comments
+        if self.offset == 0 and comments_number > int(self.config["OPTIONS"]["max_count"]):
+            self.offset = comments_number - int(self.config["OPTIONS"]["max_count"])
+
+        # WIP: VK API execute method
+        # code = """
+        # var c = API.video.getComments({'v':{v},'owner_id':{owner_id},'video_id':{video_id},'count':1});
+        # var i = 0;
+        # var a = [];
+        # while (i < count) {
+        #     a = API.video.getComments({'v':{v},'owner_id':{owner_id},'video_id':{video_id},'count':100});
+        #     i = i + 1;
+        # }
+        # return a;
+        # """.format(
+        #     v=str(self.config["OPTIONS"]["api_version"]),
+        #     owner_id=str(owner_id),
+        #     video_id=str(video_id)
+        # )
+
+        # Getting all comments of a video
+        for i in range(self.offset, comments_number, 100):
+            # VK Api is limited to 3 requests per second for users
+            sleep(0.34)
+
             comments = self.api.video.getComments(
                 v=self.config["OPTIONS"]["api_version"],
                 need_likes=self.config["OPTIONS"]["need_likes"],
@@ -186,7 +206,7 @@ sleep_time = 2"""
                 sort=self.config["OPTIONS"]["sort"],
 
                 owner_id=owner_id,
-                video_id=post_id,
+                video_id=video_id,
 
                 offset=i
             )
@@ -204,10 +224,10 @@ sleep_time = 2"""
 
                 data.append(line)
 
-        self.logger.info("Комментариев получено/всего: {0}/{1}.".format(str(comments_number["count"] - self.offset),
-                                                                        str(comments_number["count"])))
+        self.logger.info("Комментариев получено/всего: {0}/{1}.".format(str(comments_number - self.offset),
+                                                                        str(comments_number)))
 
-        self.offset = comments_number["count"]
+        self.offset = comments_number
 
         return data
 
@@ -223,8 +243,13 @@ sleep_time = 2"""
             user_ids_array.append(",".join(str(x[0]) for x in data[i:i + 1000:1]))
 
         # Method api.users.get() doesn't return repeating users
-        user_dictionary = {}
+        username_dictionary = {}
+        avatar_dictionary = {}
         for user_ids in user_ids_array:
+            # VK Api is limited to 3 requests per second for users
+            sleep(0.34)
+
+            # Doesn't return anything for a deleted user
             users = self.api.users.get(
                 v=self.config["OPTIONS"]["api_version"],
                 user_ids=user_ids,
@@ -233,12 +258,20 @@ sleep_time = 2"""
 
             # Get first and last name, plus a link to a downscaled avatar
             for user in users:
-                user_dictionary[user["id"]] = [user["first_name"] + " " + user["last_name"], user["photo_50"]]
+                username_dictionary[user["id"]] = user["first_name"] + " " + user["last_name"]
+                avatar_dictionary[user["id"]] = user["photo_50"]
 
         # Replacing user_ids with usernames and appending avatar links
         for d in data:
-            d.append(user_dictionary[d[0]][1])
-            d[0] = user_dictionary[d[0]][0]
+            user_id = d[0]
+
+            if user_id in username_dictionary:
+                d[0] = username_dictionary[user_id]
+
+            if user_id in avatar_dictionary:
+                d.append(avatar_dictionary[user_id])
+            else:
+                d.append("")
 
         return data
 

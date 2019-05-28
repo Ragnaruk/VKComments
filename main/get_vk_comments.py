@@ -1,8 +1,9 @@
-import sys
 import signal
+import sys
 from time import sleep
+
 from halo import Halo
-from vk.exceptions import VkAuthError, VkAPIError
+from vk.exceptions import VkAPIError
 
 from vkcomments import VKComments
 
@@ -36,20 +37,20 @@ except Exception as e:
 
 if obj:
     ready = False
-    owner_id, post_id = 0, 0
+    owner_id, video_id = 0, 0
 
-    # Ask for url until it's successfully parsed or owner_id and post_id are entered manually
+    # Ask for url until it's successfully parsed or owner_id and video_id are entered manually
     while not ready:
         try:
             url = input("Введите url трансляции, либо [0] для ручного ввода id: ")
 
             if url in ["0", "[0]"]:
                 owner_id = input("id пользователя: ")
-                post_id = input("id видео: ")
+                video_id = input("id видео: ")
             else:
-                owner_id, post_id = obj.get_ids_from_url(url)
+                owner_id, video_id = obj.get_ids_from_url(url)
 
-            obj.check_url(owner_id, post_id)
+            obj.get_comments_number(owner_id, video_id)
         except KeyboardInterrupt:
             exit_program()
         except ValueError:
@@ -66,13 +67,13 @@ if obj:
 
     # Getting comments and printing a spinner until escaped
     try:
-        with Halo(text='Loading', spinner='dots') as sp:
+        with Halo(text='Получение комментариев... (0) [CTRL+C для завершения работы]', spinner='dots') as sp:
             counter = 1
 
             while True:
-                sp.text = "Получение комментариев... (" + str(counter) + ") [CTRL+C для завершения работы]"
+                sp.text = "Получение комментариев... ({0}) [CTRL+C для завершения работы]".format(str(counter))
 
-                data = obj.get_comments(owner_id, post_id)
+                data = obj.get_comments(owner_id, video_id)
                 data = obj.get_usernames(data)
                 obj.print_csv(data)
 
