@@ -175,7 +175,7 @@ sleep_time = 2"""
         comments_number = self.get_comments_number(owner_id, video_id)
 
         # Setting max number of received comments
-        if self.offset == 0 and comments_number > int(self.config["OPTIONS"]["max_count"]):
+        if self.offset == 0 and comments_number > int(self.config["OPTIONS"]["max_count"]) > 0:
             self.offset = comments_number - int(self.config["OPTIONS"]["max_count"])
 
         # WIP: VK API execute method
