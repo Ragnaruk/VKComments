@@ -214,7 +214,7 @@ sleep_time = 2"""
             # Getting all needed fields from comments
             for j in range(0, len(comments["items"])):
 
-                line = []
+,                line = []
 
                 for k in self.return_fields:
                     if k == "likes":
@@ -281,7 +281,7 @@ sleep_time = 2"""
         """
 
         if len(data) > 0:
-            with open(os.path.join(self.LOCATION, self.config["OUTPUT"]["file_name"]), "a") as f:
+            with open(os.path.join(self.LOCATION, self.config["OUTPUT"]["file_name"]), "a", encoding="utf8") as f:
                 for i in range(0, len(data)):
                     print("\"" + "\",\"".join(str(x) for x in data[i]) + "\"", end=";\n", file=f)
 
