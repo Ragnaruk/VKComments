@@ -18,10 +18,13 @@ IS_EXECUTABLE = True if getattr(sys, 'frozen', False) else False
 # Defining handler for SIGINT (CTRL+C)
 signal.signal(signal.SIGINT, signal.default_int_handler)
 
-# Initializing class and logging in
-obj = None
+obj = VKComments()
+
+# Reading config and authorizing
 try:
-    obj = VKComments()
+    obj.load_config()
+    obj.remove_comments_file()
+    obj.authorize()
 except KeyboardInterrupt:
     exit_program()
 except Exception as e:
@@ -40,7 +43,7 @@ if obj:
         try:
             url = input("Введите url трансляции, либо [0] для ручного ввода id: ")
 
-            if url == "0":
+            if url in ["0", "[0]"]:
                 owner_id = input("id пользователя: ")
                 post_id = input("id видео: ")
             else:

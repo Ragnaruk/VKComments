@@ -61,13 +61,13 @@ sleep_time = 2"""
         self.logger = logging.getLogger('VKComments')
 
         self.offset = 0
-        self.config = self.get_config()
 
-        # Configparser doesn't support lists, so value needs to be split
-        self.return_fields = list(filter(None, (
-            x.strip() for x in (self.config["OPTIONS"]["return_fields"]).splitlines())))
+        self.config = None
+        self.return_fields = None
 
-        # Authorizing
+        self.api = None
+
+    def authorize(self):
         ready = False
         while not ready:
             try:
@@ -81,8 +81,21 @@ sleep_time = 2"""
             else:
                 ready = True
 
-        # Rewriting comments file
-        open(os.path.join(self.LOCATION, self.config["OUTPUT"]["file_name"]), "w")
+    def load_config(self):
+        # Creating default config if it doesn't exist
+        if not os.path.isfile(os.path.join(self.LOCATION, self.CONFIG_FILE_NAME)):
+            self.print_default_config()
+
+        self.config = configparser.ConfigParser()
+        self.config.read(os.path.join(self.LOCATION, self.CONFIG_FILE_NAME))
+
+        # Configparser doesn't support lists, so value needs to be split
+        self.return_fields = list(filter(None, (
+            x.strip() for x in (self.config["OPTIONS"]["return_fields"]).splitlines())))
+
+    def remove_comments_file(self):
+        if os.path.exists(os.path.join(self.LOCATION, self.config["OUTPUT"]["file_name"])):
+            os.remove(os.path.join(self.LOCATION, self.config["OUTPUT"]["file_name"]))
 
     def get_credentials(self):
         inp = ""
@@ -101,19 +114,6 @@ sleep_time = 2"""
 
     def get_vk_session(self, username, password):
         return vk.AuthSession(int(self.config["APPLICATION"]["app_id"]), username, password, scope="video")
-
-    def get_config(self):
-        """
-        :return: config read from a file
-        """
-
-        if not os.path.isfile(os.path.join(self.LOCATION, self.CONFIG_FILE_NAME)):
-            self.print_default_config()
-
-        config = configparser.ConfigParser()
-        config.read(os.path.join(self.LOCATION, self.CONFIG_FILE_NAME))
-
-        return config
 
     def print_default_config(self):
         with open(os.path.join(self.LOCATION, self.CONFIG_FILE_NAME), "w") as configfile:
@@ -137,11 +137,11 @@ sleep_time = 2"""
         # Removing empty strings
         t = list(filter(None, t))
 
+        if len(t) != 2 or len(t[-1]) == 0 or len(t[-2]) == 0:
+            raise ValueError("Ошибка при распознавании url.")
+
         owner_id = t[-2]
         post_id = t[-1]
-
-        if len(t) != 2 or len(owner_id) == 0 or len(post_id) == 0:
-            raise ValueError("Ошибка при распознавании url.")
 
         self.logger.debug("url: {0}.".format(str(url)))
         self.logger.debug("owner_id / post_id: {0} / {1}.".format(str(owner_id), str(post_id)))
@@ -149,7 +149,7 @@ sleep_time = 2"""
         return owner_id, post_id
 
     def check_url(self, owner_id, post_id):
-        comments_number = self.api.video.getComments(
+        self.api.video.getComments(
             v=self.config["OPTIONS"]["api_version"],
 
             owner_id=owner_id,
