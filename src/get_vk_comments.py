@@ -6,7 +6,8 @@ from time import sleep
 from halo import Halo
 from vk.exceptions import VkAPIError, VkAuthError
 
-from vkcomments import VKVideoCommentsGetter
+from vk_video_comments_getter import VKVideoCommentsGetter
+
 
 # Defining handler for SIGINT (CTRL+C)
 signal.signal(signal.SIGINT, signal.default_int_handler)

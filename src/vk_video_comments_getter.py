@@ -76,6 +76,10 @@ class VKVideoCommentsGetter:
         # Getting a logger with specified name
         self.logger = logging.getLogger('VKVideoCommentsGetter')
 
+        # Disabling built-in logging of vk package
+        logger = logging.getLogger('vk')
+        logger.disabled = True
+
         self.offset = 0
 
         self.config = None
