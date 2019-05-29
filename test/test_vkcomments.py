@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from main.vkcomments import VKVideoCommentsGetter
+from vkcomments import VKVideoCommentsGetter
 from vk.exceptions import VkAuthError
 
 
