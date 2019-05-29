@@ -1,9 +1,13 @@
+# IDE
+.idea/
+
 # Python
 venv/
 
 # PyInstaller
 build/
 dist/
+get_vk_comments.spec
 
 # Text files
 src/comments.csv
