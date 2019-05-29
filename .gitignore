@@ -4,3 +4,8 @@ venv/
 # PyInstaller
 build/
 dist/
+
+# Text files
+src/comments.csv
+src/config.ini
+src/log.log
