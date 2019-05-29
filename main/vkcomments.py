@@ -1,5 +1,4 @@
 import configparser
-import getpass
 import logging
 import os
 import re
@@ -7,61 +6,75 @@ import sys
 from time import sleep
 
 import vk
-from vk.exceptions import VkAuthError
 
 
-class VKComments:
+class VKVideoCommentsGetter:
     # Detecting whether application is a script file or frozen exe
-    LOCATION = os.path.dirname(os.path.abspath(sys.executable)) if getattr(sys, 'frozen', False) else os.path.dirname(
-        os.path.abspath(__file__))
+    LOCATION = os.path.dirname(os.path.abspath(sys.executable)) \
+        if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
 
     POSSIBLE_INPUT_VALUES = ["y", "n", "Y", "N", "yes", "no", "Yes", "No"]
     YES_INPUT_VALUES = ["y", "Y", "yes", "Yes"]
+
     CONFIG_FILE_NAME = "config.ini"
+    CONFIG_FILE_PATH = os.path.join(LOCATION, CONFIG_FILE_NAME)
     LOG_FILE_NAME = "log.log"
+    LOG_FILE_PATH = os.path.join(LOCATION, LOG_FILE_NAME)
+    COMMENTS_FILE_NAME = None
+    COMMENTS_FILE_PATH = None
 
-    DEFAULT_CONFIG = """## Файл с настройками приложения
-# Удалите этот файл для получения настроек по умолчанию
-
-[APPLICATION]
-# Id приложения, от которого идут запросы к api
-app_id = 6947304
-
-[OPTIONS]
-# Версия используемого api
-api_version = 5.95
-# Требуется ли возвращать кол-во лайков к комментариям (0 — нет, 1 — да)
-need_likes = 1
-# Кол-во комментариев, возвращаемых в одном запросе (Натуральное число от 1 до 100)
-count = 100
-# В каком порядке сортировать комментарии (asc — от старых к новым, desc — от новых к старым)
-sort = asc
-# Возвращаемые поля комментариев
-return_fields = 
-    from_id
-    date
-    text
-    likes
-# Максимальное кол-во возвращаемых комментариев (0 - вернуть все)
-max_count = 1000
-
-[OUTPUT]
-# Название выходного файла
-file_name = comments.csv
-
-[USER]
-# Логин и пароль, по которым происходит вход
-username = 
-password = 
-
-[SLEEP]
-# Время ожидания между запросами к api в секундах
-sleep_time = 2"""
+    DEFAULT_CONFIG = (
+        "## Файл с настройками приложения\n"
+        "# Удалите этот файл для получения настроек по умолчанию\n"
+        "\n"
+        "[APPLICATION]\n"
+        "# ID приложения, от которого идут запросы к api\n"
+        "app_id = 6947304\n"
+        "\n"
+        "[OPTIONS]\n"
+        "# Версия используемого api\n"
+        "api_version = 5.95\n"
+        "# Требуется ли возвращать кол-во лайков к комментариям (0 — нет, 1 — да)\n"
+        "need_likes = 1\n"
+        "# Кол-во комментариев, возвращаемых в одном запросе (Натуральное число от 1 до 100."
+        " Уменьшение этого числа может сильно влиять на производительность)\n"
+        "count = 100\n"
+        "# В каком порядке сортировать комментарии (asc — от старых к новым, desc — от новых к старым)\n"
+        "sort = asc\n"
+        "# Возвращаемые поля комментариев (Полный список: https://vk.com/dev/objects/comment)\n"
+        "return_fields = \n"
+        "    from_id\n"
+        "    date\n"
+        "    text\n"
+        "# Максимальное кол-во возвращаемых комментариев (0 - вернуть все."
+        " Увеличение этого числа может сильно влиять на производительность)\n"
+        "max_count = 1000\n"
+        "\n"
+        "[OUTPUT]\n"
+        "# Название выходного файла\n"
+        "file_name = comments.csv\n"
+        "\n"
+        "[USER]\n"
+        "# Логин и пароль, по которым происходит вход\n"
+        "username = \n"
+        "password = \n"
+        "\n"
+        "[SLEEP]\n"
+        "# Время ожидания между запросами к api в секундах\n"
+        "sleep_time = 2\n"
+    )
 
     def __init__(self):
-        # Enabling logging on the level INFO
-        logging.basicConfig(filename=os.path.join(self.LOCATION, self.LOG_FILE_NAME), level=logging.INFO, filemode="w")
-        self.logger = logging.getLogger('VKComments')
+        # Enabling logging with specified settings
+        logging.basicConfig(
+            filename=self.LOG_FILE_PATH,
+            level=logging.INFO,
+            filemode="w",
+            format="%(asctime)s - %(levelname)s - %(message)s"
+        )
+
+        # Getting a logger with specified name
+        self.logger = logging.getLogger('VKVideoCommentsGetter')
 
         self.offset = 0
 
@@ -70,60 +83,71 @@ sleep_time = 2"""
 
         self.api = None
 
-    def authorize(self):
-        ready = False
-        while not ready:
-            try:
-                username, password = self.get_credentials()
-                self.api = vk.API(self.get_vk_session(username, password))
+    # TODO (?) Combine all remove file functions
+    def remove_config_file(self):
+        if self.CONFIG_FILE_PATH and os.path.exists(self.CONFIG_FILE_PATH):
+            os.remove(self.CONFIG_FILE_PATH)
+            
+            return True
 
-                print("Авторизация прошла успешно.")
-                self.logger.info("Успешная авторизация как: {0}.".format(str(username)))
-            except VkAuthError as e:
-                input("Авторизация неуспешна. Нажмите [ENTER] для новой попытки.")
-            else:
-                ready = True
+        return False
 
+    def remove_comments_file(self):
+        if self.COMMENTS_FILE_PATH and os.path.exists(self.COMMENTS_FILE_PATH):
+            os.remove(self.COMMENTS_FILE_PATH)
+            
+            return True
+
+        return False
+
+    def remove_log_file(self):
+        if self.LOG_FILE_PATH and os.path.exists(self.LOG_FILE_PATH):
+            os.remove(self.LOG_FILE_PATH)
+            
+            return True
+        
+        return False
+
+    def authorize(self, username, password):
+        self.api = vk.API(vk.AuthSession(
+            int(self.config["APPLICATION"]["app_id"]), 
+            username, 
+            password, 
+            scope="video")
+        )
+
+        self.logger.info("Успешная авторизация как: {0}.".format(str(username)))
+
+        return True
+
+    # TODO config validation and versioning
     def load_config(self):
-        # Creating default config if it doesn't exist
-        if not os.path.isfile(os.path.join(self.LOCATION, self.CONFIG_FILE_NAME)):
-            self.print_default_config()
+        # Insurance
+        self.print_default_config()
 
         self.config = configparser.ConfigParser()
-        self.config.read(os.path.join(self.LOCATION, self.CONFIG_FILE_NAME))
+        self.config.read(self.CONFIG_FILE_PATH)
 
         # Configparser doesn't support lists, so value needs to be split
         self.return_fields = list(filter(None, (
             x.strip() for x in (self.config["OPTIONS"]["return_fields"]).splitlines())))
 
-    def remove_comments_file(self):
-        if os.path.exists(os.path.join(self.LOCATION, self.config["OUTPUT"]["file_name"])):
-            os.remove(os.path.join(self.LOCATION, self.config["OUTPUT"]["file_name"]))
+        self.COMMENTS_FILE_NAME = self.config["OUTPUT"]["file_name"]
+        self.COMMENTS_FILE_PATH = os.path.join(self.LOCATION, self.config["OUTPUT"]["file_name"])
 
-    def get_credentials(self):
-        inp = ""
-        if self.config["USER"]["username"] and self.config["USER"]["password"]:
-            while inp not in self.POSSIBLE_INPUT_VALUES:
-                inp = input("Войти как {0}? [y/n]: ".format(self.config["USER"]["username"]))
-
-        if inp in self.YES_INPUT_VALUES:
-            username = self.config["USER"]["username"]
-            password = self.config["USER"]["password"]
-        else:
-            username = input("Логин: ")
-            password = getpass.getpass("Пароль: ")
-
-        return username, password
-
-    def get_vk_session(self, username, password):
-        return vk.AuthSession(int(self.config["APPLICATION"]["app_id"]), username, password, scope="video")
+        return True
 
     def print_default_config(self):
-        with open(os.path.join(self.LOCATION, self.CONFIG_FILE_NAME), "w") as configfile:
-            print(self.DEFAULT_CONFIG, file=configfile)
+        # Creating default config if it doesn't exist
+        if not os.path.isfile(self.CONFIG_FILE_PATH):
+            with open(self.CONFIG_FILE_PATH, "w") as configfile:
+                print(self.DEFAULT_CONFIG, end="", file=configfile)
 
-        input("Файл конфигураций создан. Нажмите [ENTER] для продолжения работы.")
-        self.logger.info("Файл конфигураций c именем: {0} создан.".format(self.CONFIG_FILE_NAME))
+            self.logger.info("Файл конфигураций c именем: {0} создан.".format(self.CONFIG_FILE_NAME))
+
+            return True
+
+        return False
 
     def get_ids_from_url(self, url):
         """
@@ -140,14 +164,14 @@ sleep_time = 2"""
         # Removing empty strings
         t = list(filter(None, t))
 
-        if len(t) != 2 or len(t[-1]) == 0 or len(t[-2]) == 0:
+        if len(t) != 2 or len(t[0]) == 0 or len(t[1]) == 0:
             raise ValueError("Ошибка при распознавании url.")
 
-        owner_id = t[-2]
-        video_id = t[-1]
+        owner_id = t[0]
+        video_id = t[1]
 
-        self.logger.debug("url: {0}.".format(str(url)))
-        self.logger.debug("owner_id / video_id: {0} / {1}.".format(str(owner_id), str(video_id)))
+        self.logger.info("Полученный url: {0}.".format(str(url)))
+        self.logger.info("Распознанные owner_id/video_id: {0}/{1}.".format(str(owner_id), str(video_id)))
 
         return owner_id, video_id
 
@@ -164,12 +188,6 @@ sleep_time = 2"""
         return comments_number
 
     def get_comments(self, owner_id, video_id):
-        """
-        :param owner_id: id of the owner
-        :param video_id: id of the video
-        :return: comments from the video
-        """
-
         data = []
 
         comments_number = self.get_comments_number(owner_id, video_id)
@@ -217,26 +235,21 @@ sleep_time = 2"""
                 line = []
 
                 for k in self.return_fields:
-                    if k == "likes":
-                        line.append(comments["items"][j][k]["count"])
-                    else:
-                        line.append(comments["items"][j][k])
+                    line.append(comments["items"][j][k])
+
+                if self.config["OPTIONS"]["need_likes"] == "1":
+                    line.append(comments["items"][j]["likes"]["count"])
 
                 data.append(line)
 
-        self.logger.info("Комментариев получено/всего: {0}/{1}.".format(str(comments_number - self.offset),
-                                                                        str(comments_number)))
+        self.logger.info("Комментариев получено/всего: {0}/{1}."
+                         .format(str(comments_number - self.offset), str(comments_number)))
 
         self.offset = comments_number
 
         return data
 
     def get_usernames(self, data):
-        """
-        :param data: list of lists containing comments with user_ids
-        :return: list of lists containing comments with usernames
-        """
-
         # Method api.users.get() accepts a maximum of a thousand user_ids in one call
         user_ids_array = []
         for i in range(0, len(data), 1000):
@@ -275,16 +288,12 @@ sleep_time = 2"""
 
         return data
 
-    def print_csv(self, data):
-        """
-        :param data: list of lists containing comments
-        """
-
+    def print_comments(self, data):
         if len(data) > 0:
             with open(os.path.join(self.LOCATION, self.config["OUTPUT"]["file_name"]), "a", encoding="utf8") as f:
                 for i in range(0, len(data)):
                     print("\"" + "\",\"".join(str(x) for x in data[i]) + "\"", end=";\n", file=f)
 
             self.logger.info("Комментарии записаны в файл: {0}.".format(self.config["OUTPUT"]["file_name"]))
-        else:
-            self.logger.info("Новых комментариев нет.")
+
+        return True
