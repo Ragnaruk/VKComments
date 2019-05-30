@@ -294,10 +294,10 @@ class VKVideoCommentsGetter:
 
     def print_comments(self, data):
         if len(data) > 0:
-            with open(os.path.join(self.LOCATION, self.config["OUTPUT"]["file_name"]), "a", encoding="utf8") as f:
+            with open(self.COMMENTS_FILE_PATH, "a", encoding="utf8") as f:
                 for i in range(0, len(data)):
                     print("\"" + "\",\"".join(str(x) for x in data[i]) + "\"", end=";\n", file=f)
 
-            self.logger.info("Комментарии записаны в файл: {0}.".format(self.config["OUTPUT"]["file_name"]))
+            self.logger.info("Комментарии записаны в файл: {0}.".format(self.COMMENTS_FILE_NAME))
 
         return True
