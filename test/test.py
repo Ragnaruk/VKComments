@@ -1,14 +1,16 @@
 import os
 import unittest
 
-from src.vk_video_comments_getter import VKVideoCommentsGetter
 from vk.exceptions import VkAuthError
+
+from src.vk_video_comments_getter import VKVideoCommentsGetter, URLParserError
 
 
 class TestVKVideoCommentsGetter(unittest.TestCase):
     # Launching before every test
     def setUp(self):
         self.obj = VKVideoCommentsGetter()
+        self.obj.load_default_config()
 
         # Removing all files
         self.obj.remove_config_file()
@@ -37,30 +39,20 @@ class TestVKVideoCommentsGetter(unittest.TestCase):
         )
 
     def test__get_ids_from_url__too_many_numbers(self):
-        with self.assertRaises(ValueError, msg="Слишком много чисел в url."):
+        with self.assertRaises(URLParserError, msg="Слишком много чисел в url."):
             self.obj.get_ids_from_url("https://vk.com/video123123_456456_123456")
 
     def test__get_ids_from_url__not_enough_numbers(self):
-        with self.assertRaises(ValueError, msg="Слишком мало чисел в url."):
+        with self.assertRaises(URLParserError, msg="Слишком мало чисел в url."):
             self.obj.get_ids_from_url("https://vk.com/video123123")
 
-    def test__print_default_config__creation(self):
-        self.obj.print_default_config()
-        
+    def test__load_default_config__creation(self):
+        self.obj.load_default_config()
+
         self.assertTrue(
             os.path.isfile(self.obj.CONFIG_FILE_PATH),
             msg="Создание файла конфигураций."
         )
-
-    def test__print_default_config__correctness(self):
-        self.obj.print_default_config()
-
-        with open(self.obj.CONFIG_FILE_PATH, "r") as config_file:
-            self.assertEqual(
-                self.obj.DEFAULT_CONFIG,
-                config_file.read(),
-                msg="Проверка правильности файла конфигураций."
-            )
 
     def test__remove_config_file(self):
         with open(self.obj.CONFIG_FILE_PATH, "w") as config_file:
@@ -74,9 +66,7 @@ class TestVKVideoCommentsGetter(unittest.TestCase):
         )
 
     def test__remove_comments_file(self):
-        self.obj.load_config()
-
-        with open(self.obj.COMMENTS_FILE_PATH, "w") as comments_file:
+        with open(os.path.join(self.obj.LOCATION, self.obj.config["FILE_OUTPUT"]["file_name"]), "w") as comments_file:
             print("Hello World", file=comments_file)
 
         self.obj.remove_comments_file()
@@ -97,19 +87,15 @@ class TestVKVideoCommentsGetter(unittest.TestCase):
             msg="Удаление файла лога."
         )
 
-    def test__authorize__correct(self):
-        self.obj.load_config()
-
+    def test__authorize_vk__correct(self):
         self.assertTrue(
-            self.obj.authorize("", ""),
+            self.obj.authorize_vk("", ""),
             msg="Верные логин и пароль для авторизации."
         )
 
-    def test__authorize__incorrect(self):
-        self.obj.load_config()
-
+    def test__authorize_vk__incorrect(self):
         with self.assertRaises(VkAuthError, msg="Неверные логин и пароль для авторизации."):
-            self.obj.authorize("123", "123")
+            self.obj.authorize_vk("123", "123")
 
 
 if __name__ == '__main__':
