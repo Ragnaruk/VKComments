@@ -1,39 +1,41 @@
-import signal
 import getpass
+import signal
 import sys
 from time import sleep
 
 from halo import Halo
 from vk.exceptions import VkAPIError, VkAuthError
 
-from vk_video_comments_getter import VKVideoCommentsGetter
-
-
-# Defining handler for SIGINT (CTRL+C)
-signal.signal(signal.SIGINT, signal.default_int_handler)
+from vk_video_comments_getter import VKVideoCommentsGetter, URLParserError, ConfigValidationError
 
 
 # Loading (or creating and loading config) and removing previous comments file
 def ready_files():
-    try:
-        if obj.print_default_config():
-            input("Файл конфигураций создан. Нажмите [ENTER] для продолжения работы.")
+    while True:
+        try:
+            if obj.load_default_config():
+                input("Файл конфигураций создан. Нажмите [ENTER] для продолжения работы.")
 
-        obj.load_config()
+            obj.load_config()
 
-        obj.remove_comments_file()
-    except KeyboardInterrupt:
-        exit_program()
-    except Exception as e:
-        if hasattr(e, 'message'):
-            print(e.message)
+            obj.remove_comments_file()
+        except ConfigValidationError:
+            input("Файл конфигураций был дополнен. Нажмите [ENTER] для продолжения работы.")
+        except KeyboardInterrupt:
+            exit_program()
+        except Exception as e:
+            if hasattr(e, 'message'):
+                print(e.message)
+            else:
+                print(e)
+
+            exit_program()
         else:
-            print(e)
-        exit_program()
+            break
 
 
 # Authorizing with credentials in config file or with inputted ones
-def authorize():
+def authorize_vk():
     while True:
         try:
             inp = ""
@@ -48,7 +50,7 @@ def authorize():
                 username = input("Логин: ")
                 password = getpass.getpass("Пароль: ")
 
-            obj.authorize(username, password)
+            obj.authorize_vk(username, password)
 
             print("Авторизация прошла успешно.")
         except VkAuthError:
@@ -60,6 +62,7 @@ def authorize():
                 print(e.message)
             else:
                 print(e)
+
             exit_program()
         else:
             break
@@ -69,7 +72,7 @@ def authorize():
 def get_video_ids():
     while True:
         try:
-            url = input("Введите url трансляции, либо [0] для ручного ввода id: ")
+            url = input("Введите url трансляции, либо [0] для ручного ввода ID: ")
 
             if url in ["0", "[0]"]:
                 owner_id = input("ID пользователя: ")
@@ -78,7 +81,7 @@ def get_video_ids():
                 owner_id, video_id = obj.get_ids_from_url(url)
 
             obj.get_comments_number(owner_id, video_id)
-        except ValueError:
+        except URLParserError:
             print("Ошибка при распознавании url. Формат url: https://vk.com/videoXXXXX_XXXXX. Повторите попытку ввода.")
         except VkAPIError:
             print("Ошибка при доступе к API, возможно указанного видео не существует. Повторите попытку ввода.")
@@ -117,23 +120,29 @@ def get_comments(owner_id, video_id, sleep_time):
             print(e.message)
         else:
             print(e)
+
         exit_program()
 
 
 def exit_program():
     input("\nПрограмма остановлена. Нажмите [ENTER] для завершения работы.")
     obj.logger.info("Программа остановлена пользователем.")
+
     sys.exit()
 
 
-obj = VKVideoCommentsGetter()
+if __name__ == '__main__':
+    # Defining handler for SIGINT (CTRL+C)
+    signal.signal(signal.SIGINT, signal.default_int_handler)
 
-ready_files()
-authorize()
+    obj = VKVideoCommentsGetter()
 
-o_id, v_id = get_video_ids()
-s_time = int(obj.config["SLEEP"]["sleep_time"])
+    ready_files()
+    authorize_vk()
 
-get_comments(o_id, v_id, s_time)
+    o_id, v_id = get_video_ids()
+    s_time = int(obj.config["APPLICATION"]["sleep_time"])
 
-exit_program()
+    get_comments(o_id, v_id, s_time)
+
+    exit_program()
