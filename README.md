@@ -3,6 +3,7 @@
 [![Build Status](https://travis-ci.org/Ragnaruk/VKComments.svg?branch=master)](https://travis-ci.org/Ragnaruk/VKComments)
 
 ## Описание
+
 Приложение, которое запрашивает комментарии к выбранному видео (url или id) в социальной сети VK с указанной периодичностью и выводит их в .csv файл.
 
 ## Установка
